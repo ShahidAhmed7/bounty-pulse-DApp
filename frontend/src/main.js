@@ -1,6 +1,6 @@
 import './style.css'
 import { parseEther, formatEther } from 'ethers'
-import { hasWallet, getProvider, getSigner, getReadContract, getWriteContract } from './contract/config.js'
+import { hasWallet, getProvider, getSigner, getReadContract, getWriteContract, getEventContract } from './contract/config.js'
 import { uploadFileToPinata, uploadJSONToPinata, cidToGatewayUrl } from './ipfsHelper.js'
 
 const ROLE_NAMES = ['None', 'Client', 'Freelancer', 'Arbiter']
@@ -70,6 +70,33 @@ async function loadWithdrawable(address) {
 /** Re-reads everything a write tx could have changed - feed + the caller's own balance. */
 async function refreshFeedState() {
   await Promise.all([loadBounties(), loadWithdrawable(state.address)])
+}
+
+let refreshTimer = null
+
+/**
+ * Debounced full refresh, triggered by a contract event instead of our own tx. A single
+ * transaction can emit more than one event (e.g. fundEscrow + a refund) - without coalescing
+ * this would re-read chain state twice for one change. Also reloads `state.user` (not just
+ * the feed/balance), since reputation can change for an address that isn't the local caller.
+ */
+function scheduleRefresh() {
+  clearTimeout(refreshTimer)
+  refreshTimer = setTimeout(async () => {
+    if (!state.address) return
+    const reader = await getReadContract()
+    state.user = await reader.getUser(state.address)
+    await refreshFeedState()
+    render()
+  }, 500)
+}
+
+/**
+ * Live sync (Checkpoint 5): one wildcard listener catches every contract event instead of
+ * eleven near-identical handlers - any state change just triggers the same refresh path.
+ */
+function subscribeToEvents() {
+  getEventContract().on('*', scheduleRefresh)
 }
 
 async function loadAccount(address) {
@@ -599,6 +626,8 @@ function render() {
 async function init() {
   render()
   if (!hasWallet()) return
+
+  subscribeToEvents()
 
   // Silent read - eth_accounts never opens a MetaMask popup, unlike
   // eth_requestAccounts. This is how the address is "auto-detected on load"

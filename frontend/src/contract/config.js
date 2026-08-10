@@ -55,3 +55,17 @@ export async function getReadContract() {
 export async function getWriteContract() {
   return new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, await getSigner())
 }
+
+/**
+ * Contract instance for live event subscriptions (Checkpoint 5). `pollingInterval` has
+ * no setter - ethers only reads it once, from the provider's constructor options - so
+ * the faster interval has to be passed in here rather than assigned on getProvider()'s
+ * result afterwards. MetaMask's injected provider has no websocket for a local Anvil
+ * node, so ethers polls via getLogs; the default 4s interval is tightened so cross-window
+ * updates read as close to instant instead of visibly laggy.
+ */
+export function getEventContract() {
+  if (!hasWallet()) throw new Error('MetaMask not found. Install it to use BountyPulse.')
+  const provider = new BrowserProvider(window.ethereum, undefined, { pollingInterval: 1000 })
+  return new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider)
+}

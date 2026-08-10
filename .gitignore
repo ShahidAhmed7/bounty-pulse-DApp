@@ -12,3 +12,7 @@ frontend/dist/
 
 # Personal build/viva notes - not team material.
 LEARNING.md
+
+# Local setup/demo walkthrough - embeds well-known Anvil test keys for convenience, not
+# meant to be graded or shared as part of the submission.
+DEMO_GUIDE.md
