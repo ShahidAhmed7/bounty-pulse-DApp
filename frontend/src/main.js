@@ -436,10 +436,13 @@ function bidsHtml(bounty) {
         .map((bid, bidIndex) => {
           const isClient = sameAddress(bounty.client, state.address)
           const canFund = isClient && Number(bounty.status) === 0
+          // A winner only exists once escrow is funded, i.e. any status past Open.
+          const isWinner = Number(bounty.status) >= 1 && sameAddress(bid.freelancer, bounty.winner)
           return `
-            <li class="bid-row">
+            <li class="bid-row${isWinner ? ' bid-row-winner' : ''}">
               <span class="address" title="${bid.freelancer}">${short(bid.freelancer)}</span>
               <span>${formatEther(bid.amount)} ETH</span>
+              ${isWinner ? `<span class="badge badge-winner">Winner</span>` : ''}
               ${
                 canFund
                   ? `<button type="button" class="fund-escrow-btn" data-bounty-id="${bounty.id}" data-bid-index="${bidIndex}">Fund Escrow</button>`
@@ -500,6 +503,26 @@ function arbiterActionsHtml(bounty) {
   `
 }
 
+/**
+ * Tells the winning freelancer that this bounty is theirs. Without it the only on-screen
+ * signal that a bid was accepted is the status flipping to Locked, which does not say *who*
+ * won - so a freelancer watching two locked bounties could not tell which one to work on.
+ * The winner is set on-chain by fundEscrow and arrives here via the EscrowFunded event.
+ */
+function winnerBannerHtml(bounty) {
+  if (!sameAddress(bounty.winner, state.address)) return ''
+
+  const messages = {
+    1: `You won this bounty. Submit your work using <strong>Bounty ID ${bounty.id}</strong>.`,
+    2: 'Your work is submitted and waiting for the client to approve it.',
+    3: 'This bounty is resolved. Check your Unclaimed Earnings.',
+    4: 'The client raised a dispute. The arbiter will decide the outcome.',
+  }
+
+  const message = messages[Number(bounty.status)]
+  return message ? `<p class="winner-banner">${message}</p>` : ''
+}
+
 function bountyCardHtml(bounty) {
   const statusName = STATUS_NAMES[Number(bounty.status)]
 
@@ -509,6 +532,7 @@ function bountyCardHtml(bounty) {
         <h3>Bounty #${bounty.id}</h3>
         <span class="badge status-${statusName.toLowerCase()}">${statusName}</span>
       </div>
+      ${winnerBannerHtml(bounty)}
       <p class="bounty-meta">
         Client <span class="address" title="${bounty.client}">${short(bounty.client)}</span>
         &middot; Max budget <strong>${formatEther(bounty.maxBudget)} ETH</strong>

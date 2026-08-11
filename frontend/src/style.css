@@ -366,6 +366,28 @@ button[disabled] {
   background: var(--card-bg);
 }
 
+.bid-row-winner {
+  background: var(--accent-bg);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+
+.badge.badge-winner {
+  background: transparent;
+  color: var(--ok);
+  border-color: var(--ok);
+  margin-left: auto;
+}
+
+.winner-banner {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text-h);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+}
+
 .bid-form {
   margin-top: 12px;
 }
